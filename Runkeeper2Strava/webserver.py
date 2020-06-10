@@ -1,6 +1,4 @@
 import http.server as hs
-import threading
-import time
 from urllib.parse import urlparse
 
 args = None
@@ -31,15 +29,7 @@ def run(port: int, handler_class=RequestHandler):
 def get_auth(port):
     global args
 
-    server_thread = threading.Thread(target=run, args=(int(port),))
-    server_thread.start()
-
-    while args is None:
-        time.sleep(0.5)
-
-    time.sleep(0.5)  # prevent server being ended before response sent
-
-    server_thread.join()
+    run(int(port))
 
     process_args = args
 
