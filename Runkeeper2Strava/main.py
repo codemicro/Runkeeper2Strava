@@ -6,14 +6,13 @@ import webbrowser
 import zipfile
 
 import easygui
+import gpxpy
 import requests
 from tqdm import tqdm
 
-import gpxpy
-
 import webserver
 
-print("Runkeeper2Strava\n")
+print("Runkeeper2Strava version 0.1.0b\n")
 
 PORT = 8556
 
@@ -62,7 +61,7 @@ else:
 
 print("\nWelcome", ATHLETE_INFO["firstname"], ATHLETE_INFO["lastname"] + "!")
 
-print("Please select your Runkeeper activity export.")
+print("Please select your Runkeeper activity export file.")
 time.sleep(1)
 
 runkeeper_activity_export_path = easygui.fileopenbox(msg="Please select your Runkeeper activity export",
