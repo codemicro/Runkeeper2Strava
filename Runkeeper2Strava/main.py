@@ -100,7 +100,11 @@ print("Beginning upload")
 
 for i, file in tqdm(enumerate(gpx_files), total=len(gpx_files)):
 
-    gpxp = gpxpy.parse(open(file))
+    try:
+    	gpxp = gpxpy.parse(open(file))
+    except gpxpy.gpx.GPXXMLSyntaxException as e:
+    	print(f"\nError: {file} is corrupt or unreadable. Skipping this file.")
+    	continue
 
     gpx_activity = gpxp.tracks[0].name.lower().split(" ")[0]
 
