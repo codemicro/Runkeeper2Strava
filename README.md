@@ -10,7 +10,7 @@ v3 API.
 ### Requirements
 
 * Python 3.6+
-* `pipenv` installed
+* `pipenv` installed (see [pypa/pipenv](https://github.com/pypa/pipenv#installation))
 
 ### Setup
 
