@@ -38,7 +38,7 @@ v3 API.
 #### Setting up this importer
 
 * Clone or otherwise download this repository to your local computer.
-* Run `pipenv sync`.
+* Run `pipenv sync` in the base directory of this repo.
 * While that's running, copy `.env.example` to `.env` and replace `<your client id>` with your Strava client ID and 
 `<your client secret>` with your Strava client secret.
 
