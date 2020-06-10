@@ -14,3 +14,6 @@ gpxpy = "*"
 
 [requires]
 python_version = "3.8"
+
+[scripts]
+app = "python Runkeeper2Strava/main.py"
