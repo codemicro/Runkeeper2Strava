@@ -9,7 +9,7 @@ v3 API.
 
 ### Requirements
 
-* Python 3.6+
+* Python 3.6+ ([how to install](https://realpython.com/installing-python/))
 * `pipenv` installed (see [pypa/pipenv](https://github.com/pypa/pipenv#installation))
 
 ### Setup
@@ -56,7 +56,7 @@ activities can be uploaded in one day, again due to ratelimits.
 As a result, only importing less than 1000 activities is supported. If you want to import more than 1000 activities into
  Strava, you should extract the Runkeeper export and batch the GPX files in groups of 1000, with each group being in
  its own ZIP file. You do not need to include the CSV files with these.
- 
+
 ### Issues and contributing
 
 Got a problem? Open an issue using the issues tab.
