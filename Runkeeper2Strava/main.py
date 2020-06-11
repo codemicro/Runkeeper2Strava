@@ -168,9 +168,8 @@ for i, file in tqdm(enumerate(gpx_files), total=len(gpx_files)):
     }
 
     if gpx_activity not in known_activities:
-        sys.exit(f"Error: unknown activity: {gpx_activity}")
-
-    print(file.split(os.path.sep)[-1].split(".")[0])
+        print(f"Error: unknown activity: {gpx_activity} - skipping {file}")
+        continue
 
     upload_params = {
         "name": ("Afternoon" if int(file.split(os.path.sep)[-1].split(".")[0][11:13]) > 11 else "Morning") + " " +
@@ -182,8 +181,6 @@ for i, file in tqdm(enumerate(gpx_files), total=len(gpx_files)):
         "external_id": f"uploaded_{i}",
         "activity_type": known_activities[gpx_activity]
     }
-
-    print(upload_params)
 
     gpx_file_object = open(file, "rb")
 
