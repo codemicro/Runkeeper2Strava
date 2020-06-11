@@ -56,6 +56,39 @@ activities can be uploaded in one day, again due to ratelimits.
 As a result, only importing less than 1000 activities is supported. If you want to import more than 1000 activities into
  Strava, you should extract the Runkeeper export and batch the GPX files in groups of 1000, with each group being in
  its own ZIP file. You do not need to include the CSV files with these.
+ 
+Currently only cycling, running and walking activities can be processed. If an activity is found that is not of one of 
+these types, it will be skipped. If you'd like more activity types to be added, open an issue.
+
+*(Alternatively, you can add activity types by mapping the name used in Runkeeper's GPX files to the name used by Strava. 
+Strava's names can be found [here](https://developers.strava.com/docs/uploads/#how-to-upload-an-activity), and the 
+names used by Runkeeper can be found in the name section of the track name in any GPX file. The Runkeeper value to name 
+can then be mapped into the dictionary named `known_activities` in `main.py`. Feel free to submit a pull request if you 
+do this.)*
+
+### FAQs
+
+#### Why did it say a file is corrupt or unreadable?
+
+During testing, it's been found that some GPX files that Runkeeper exports are malformed. It's thought that this is a 
+result of the activity being edited after if occurred using Runkeeper's website. If this is the case, you can fix your 
+GPX file by doing the following:
+
+* Stop the program using CTRL+C.
+* Restart the program and sign into Strava again.
+* Select the same Runkeeer export as before.
+* **Decline** to continue where you left off when prompted.
+* When you're told an estimation of how long it will take and asked if you want to continue, do not press or type 
+anything.
+* Insead, open the errored file in a text editor (the file path is shown by the program when the error occurs).
+* Search for and remove extra `</trkseg>` tags found in the middle of the file.
+* Save the file.
+* Return to the program and answer `y` to the prompt and continue as normal.
+
+#### Is this secure?
+
+Yep! Access tokens for your Strava account never leave your computer and are not stored in any way.
+
 
 ### Issues and contributing
 
