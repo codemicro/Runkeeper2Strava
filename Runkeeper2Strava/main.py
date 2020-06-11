@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import sys
@@ -73,14 +74,53 @@ if runkeeper_activity_export_path is None:
 if not zipfile.is_zipfile(runkeeper_activity_export_path):
     sys.exit("Error: Supplied file is not a valid ZIP file")
 
-temp_dir = os.path.expandvars("%temp%/Runkeeper2Strava/")
-if not os.path.exists(temp_dir):
-    os.makedirs(temp_dir)
+export_dir = os.path.join(os.path.expandvars("%temp%"), "Runkeeper2Strava", "export")
+if not os.path.exists(export_dir):
+    os.makedirs(export_dir)
+
+progress_file = os.path.join(os.path.expandvars("%temp%"), "Runkeeper2Strava", "progress.json")
+
+
+def record_progress(num:int):
+    num = int(num)
+
+    if os.path.exists(progress_file):
+        cur_prog = json.load(open(progress_file))
+
+        cur_prog[runkeeper_activity_export_path] = num
+
+        json.dump(cur_prog, open(progress_file, "w"))
+
+    else:
+        json.dump({runkeeper_activity_export_path: num}, open(progress_file, "w"))
+
+
+def get_progress(fname:str):
+    if os.path.exists(progress_file):
+        saved_prog = json.load(open(progress_file))
+        if fname in saved_prog:
+            return int(saved_prog[fname])
+        else:
+            return 0
+    else:
+        return 0
+
+
+current_progress = get_progress(runkeeper_activity_export_path)
+if current_progress != 0:
+    choice = input("It looks like you already started uploading activities from this export. Would you like to continue "
+                   "from where you left off? (Y/n) ")
+
+    if choice.lower() not in ["y", ""]:
+        resume_from = 0
+    else:
+        resume_from = current_progress - 1  # just to make sure everything is uploaded
+else:
+    resume_from = 0
 
 print("Extracting ZIP file...")
 
 with zipfile.ZipFile(runkeeper_activity_export_path) as zf:
-    zf.extractall(path=temp_dir)
     try:
         zf.extractall(path=export_dir)
     except FileNotFoundError as e:
@@ -90,9 +130,18 @@ print("Discovering all GPX files...")
 
 gpx_files = []
 
-for file in os.listdir(temp_dir):
+for file in os.listdir(export_dir):
     if file.lower().endswith(".gpx"):
-        gpx_files.append(os.path.join(temp_dir, file))
+        gpx_files.append(os.path.join(export_dir, file))
+
+gpx_files = gpx_files[resume_from:]
+
+if len(gpx_files) == 0:
+    sys.exit("Error: no activities found in the specified file")
+
+if len(gpx_files) > 1000:
+    sys.exit(f"Error: only a maximum of 1000 activities can be uploaded at once. The file you specified contained "
+             f"{len(gpx_files)} activities.")
 
 continue_flag = input(f"Found {len(gpx_files)} files to upload. This will take about "
                       f"{int((len(gpx_files)*10)/60)} minutes. Continue? (Y/n) ")
@@ -105,10 +154,10 @@ print("Beginning upload")
 for i, file in tqdm(enumerate(gpx_files), total=len(gpx_files)):
 
     try:
-    	gpxp = gpxpy.parse(open(file))
+        gpxp = gpxpy.parse(open(file))
     except gpxpy.gpx.GPXXMLSyntaxException as e:
-    	print(f"\nError: {file} is corrupt or unreadable. Skipping this file.")
-    	continue
+        print(f"\nError: {file} is corrupt or unreadable. Skipping this file.")
+        continue
 
     gpx_activity = gpxp.tracks[0].name.lower().split(" ")[0]
 
@@ -121,9 +170,12 @@ for i, file in tqdm(enumerate(gpx_files), total=len(gpx_files)):
     if gpx_activity not in known_activities:
         sys.exit(f"Error: unknown activity: {gpx_activity}")
 
+    print(file.split(os.path.sep)[-1].split(".")[0])
+
     upload_params = {
-        "name": file.split(os.path.sep)[-1].split(".")[0],
-        "description": "Uploaded by R2S",
+        "name": ("Afternoon" if int(file.split(os.path.sep)[-1].split(".")[0][11:13]) > 11 else "Morning") + " " +
+                known_activities[gpx_activity],
+        "description": "Uploaded by R2S - https://www.github.com/codemicro/Runkeeper2Strava",
         "trainer": False,
         "commute": False,
         "data_type": "gpx",
@@ -131,10 +183,16 @@ for i, file in tqdm(enumerate(gpx_files), total=len(gpx_files)):
         "activity_type": known_activities[gpx_activity]
     }
 
-    files = {"file": open(file, "rb")}
+    print(upload_params)
+
+    gpx_file_object = open(file, "rb")
+
+    files = {"file": gpx_file_object}
 
     r = requests.post(f"{API_ADDR}/uploads", data=upload_params, files=files,
-                      headers={"Authorization": f"Bearer {STRAVA_ACCESS_CODE}"})
+                     headers={"Authorization": f"Bearer {STRAVA_ACCESS_CODE}"})
+
+    gpx_file_object.close()
 
     resp_json = r.json()
 
@@ -146,14 +204,20 @@ for i, file in tqdm(enumerate(gpx_files), total=len(gpx_files)):
         print(resp_json)
         sys.exit(f"Error: Upload failed. HTTP {r.status_code} returned.")
 
+    record_progress(resume_from + i)
+
     time.sleep(10)  # ratelimit :(
 
 print("\nCleaning up...")
 
-for filename in os.listdir(temp_dir):
-    file_path = os.path.join(temp_dir, filename)
+for filename in os.listdir(export_dir):
+    file_path = os.path.join(export_dir, filename)
     if os.path.isfile(file_path) or os.path.islink(file_path):
-        os.unlink(file_path)
+        try:
+            os.unlink(file_path)
+        except PermissionError:
+            # Cannot delete the file because it's currently in use, in which case just skip it
+            pass
     elif os.path.isdir(file_path):
         shutil.rmtree(file_path)
 
