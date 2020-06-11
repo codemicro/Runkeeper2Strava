@@ -81,6 +81,10 @@ print("Extracting ZIP file...")
 
 with zipfile.ZipFile(runkeeper_activity_export_path) as zf:
     zf.extractall(path=temp_dir)
+    try:
+        zf.extractall(path=export_dir)
+    except FileNotFoundError as e:
+        sys.exit(f"Error: Unable to extract ZIP file.\n{e}")
 
 print("Discovering all GPX files...")
 
