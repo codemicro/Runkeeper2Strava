@@ -71,7 +71,7 @@ do this.)*
 #### Why did it say a file is corrupt or unreadable?
 
 During testing, it's been found that some GPX files that Runkeeper exports are malformed. It's thought that this is a 
-result of the activity being edited after if occurred using Runkeeper's website. If this is the case, you can fix your 
+result of the activity being edited after it occurred using Runkeeper's website. If this is the case, you can fix your 
 GPX file by doing the following:
 
 * Stop the program using CTRL+C.
