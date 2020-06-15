@@ -10,12 +10,11 @@ known_activities = {
 def time_to_iso(old_time: str) -> str:
 
     """
-    Convert DD/MM/YYYY  HH:MM to ISO 8601 format
-    13/04/2020 15:33:38
+    Convert YYYY-MM-DD HH:MM to ISO 8601 format
     """
 
     old_time = " ".join(old_time.split())  # replace multiple spaces with one in any location
-    dt = datetime.datetime.strptime(old_time, "%d/%m/%Y %H:%M:%S")
+    dt = datetime.datetime.strptime(old_time, "%Y-%m-%d %H:%M:%S")
     return dt.replace(microsecond=0).isoformat()
 
 
