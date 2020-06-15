@@ -1,3 +1,5 @@
+print("Runkeeper2Strava version 0.1.0b\n")
+
 import json
 import os
 import shutil
@@ -13,9 +15,13 @@ from tqdm import tqdm
 
 import webserver
 
-print("Runkeeper2Strava version 0.1.0b\n")
-
 PORT = 8556
+
+known_activities = {
+    "cycling": "ride",
+    "walking": "walk",
+    "running": "run"
+}
 
 if "R2S_STRAVA_CLIENT_ID" not in os.environ:
     sys.exit("Error: Strava client ID not in environment variables")
@@ -28,6 +34,20 @@ STRAVA_CLIENT_SECRET = os.environ["R2S_STRAVA_CLIENT_SECRET"]
 
 API_ADDR = "https://www.strava.com/api/v3"
 OAUTH_ADDR = f"http://www.strava.com/oauth/authorize?client_id={STRAVA_CLIENT_ID}&response_type=code&redirect_uri=http://localhost:8556/exchange_token&scope=activity:write"
+
+
+def cleanTempDir(directory):
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        if os.path.isfile(file_path) or os.path.islink(file_path):
+            try:
+                os.unlink(file_path)
+            except PermissionError:
+                # Cannot delete the file because it's currently in use, in which case just skip it
+                pass
+        elif os.path.isdir(file_path):
+            shutil.rmtree(file_path)
+
 
 # oAuth time!
 print("When prompted, please sign in with Strava and authorise the app")
@@ -147,6 +167,7 @@ continue_flag = input(f"Found {len(gpx_files)} files to upload. This will take a
                       f"{int((len(gpx_files)*10)/60)} minutes. Continue? (Y/n) ")
 
 if continue_flag.lower() not in ["", "y"]:
+    cleanTempDir(export_dir)
     sys.exit("Error: user abort")
 
 print("Beginning upload")
@@ -160,12 +181,6 @@ for i, file in tqdm(enumerate(gpx_files), total=len(gpx_files)):
         continue
 
     gpx_activity = gpxp.tracks[0].name.lower().split(" ")[0]
-
-    known_activities = {
-        "cycling": "ride",
-        "walking": "walk",
-        "running": "run"
-    }
 
     if gpx_activity not in known_activities:
         print(f"Error: unknown activity: {gpx_activity} - skipping {file}")
@@ -207,15 +222,6 @@ for i, file in tqdm(enumerate(gpx_files), total=len(gpx_files)):
 
 print("\nCleaning up...")
 
-for filename in os.listdir(export_dir):
-    file_path = os.path.join(export_dir, filename)
-    if os.path.isfile(file_path) or os.path.islink(file_path):
-        try:
-            os.unlink(file_path)
-        except PermissionError:
-            # Cannot delete the file because it's currently in use, in which case just skip it
-            pass
-    elif os.path.isdir(file_path):
-        shutil.rmtree(file_path)
+cleanTempDir(export_dir)
 
 print("\nDone!")
