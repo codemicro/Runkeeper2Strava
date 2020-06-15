@@ -165,7 +165,7 @@ with open(os.path.join(export_dir, "cardioActivities.csv")) as f:
 
 activity_reader = csv.reader(csv_contents)
 
-activities = [a for a in activity_reader][resume_from:]
+activities = [a for a in activity_reader if a != []][resume_from:]
 
 
 if len(activities) == 0:
@@ -181,7 +181,7 @@ continue_flag = input(f"Found {len(activities)} files to upload. This will take 
                       f"{int((len(activities)*10)/60)} minutes. Continue? (Y/n) ")
 
 if continue_flag.lower() not in ["", "y"]:
-    cleanTempDir(activities)
+    cleanTempDir(temp_dir)
     logger.error("user abort")
     sys.exit()
 
