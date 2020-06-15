@@ -1,4 +1,4 @@
-print("Runkeeper2Strava version 0.1.0b\n")
+print("Runkeeper2Strava version 0.2.1b\n")
 
 import csv
 import datetime
