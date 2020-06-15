@@ -11,6 +11,7 @@ easygui = "*"
 tqdm = "*"
 lxml = "*"
 gpxpy = "*"
+loguru = "*"
 
 [requires]
 python_version = "3.8"

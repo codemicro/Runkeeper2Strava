@@ -11,6 +11,7 @@ import webbrowser
 import zipfile
 
 import easygui
+from loguru import logger
 import gpxpy
 import requests
 from tqdm import tqdm
@@ -20,11 +21,16 @@ import webserver
 
 PORT = 8556
 
+temp_dir = os.path.join(os.path.expandvars("%temp%"), "Runkeeper2Strava")
+logger.add(os.path.join(temp_dir, "error.log"), level="ERROR")
+
 if "R2S_STRAVA_CLIENT_ID" not in os.environ:
-    sys.exit("Error: Strava client ID not in environment variables")
+    logger.error("Strava client ID not in environment variables")
+    sys.exit()
 
 if "R2S_STRAVA_CLIENT_SECRET" not in os.environ:
-    sys.exit("Error: Strava client secret not in environment variables")
+    logger.error("Strava client secret not in environment variables")
+    sys.exit()
 
 STRAVA_CLIENT_ID = os.environ["R2S_STRAVA_CLIENT_ID"]
 STRAVA_CLIENT_SECRET = os.environ["R2S_STRAVA_CLIENT_SECRET"]
@@ -56,9 +62,11 @@ resp = webserver.get_auth(PORT)
 
 if "error" in resp:
     if resp["error"] == "access_denied":
-        sys.exit("Error: You need to allow access to Strava for the app to work")
+        logger.error("You need to allow access to Strava for the app to work")
+        sys.exit()
 elif "activity:write" not in resp["scope"]:
-    sys.exit("Error: activity:write permission missing")
+    logger.error("activity:write permission missing")
+    sys.exit()
 
 print("Code received, obtaining access token...")
 
@@ -75,7 +83,8 @@ if r.status_code == 200:
     ATHLETE_INFO = r_json["athlete"]
     STRAVA_ACCESS_CODE = r_json["access_token"]
 else:
-    sys.exit(f"Error: unable to obtain access token, HTTP {r.status_code}.")
+    logger.error(f"unable to obtain access token, HTTP {r.status_code}.")
+    sys.exit()
 
 print("\nWelcome", ATHLETE_INFO["firstname"], ATHLETE_INFO["lastname"] + "!")
 
@@ -86,16 +95,18 @@ runkeeper_activity_export_path = easygui.fileopenbox(msg="Please select your Run
                                                      title="Select Runkeeper activity export", default="*.zip")
 
 if runkeeper_activity_export_path is None:
-    sys.exit("Error: No export selected")
+    logger.error("No export selected")
+    sys.exit()
 
 if not zipfile.is_zipfile(runkeeper_activity_export_path):
-    sys.exit("Error: Supplied file is not a valid ZIP file")
+    logger.error("Supplied file is not a valid ZIP file")
+    sys.exit()
 
-export_dir = os.path.join(os.path.expandvars("%temp%"), "Runkeeper2Strava", "export")
+export_dir = os.path.join(temp_dir, "export")
 if not os.path.exists(export_dir):
     os.makedirs(export_dir)
 
-progress_file = os.path.join(os.path.expandvars("%temp%"), "Runkeeper2Strava", "progress.json")
+progress_file = os.path.join(temp_dir, "progress.json")
 
 
 def record_progress(num:int):
@@ -141,7 +152,8 @@ with zipfile.ZipFile(runkeeper_activity_export_path) as zf:
     try:
         zf.extractall(path=export_dir)
     except FileNotFoundError as e:
-        sys.exit(f"Error: Unable to extract ZIP file.\n{e}")
+        logger.error(f"Unable to extract ZIP file.\n{e}")
+        sys.exit()
 
 
 
@@ -157,18 +169,21 @@ activities = [a for a in activity_reader][resume_from:]
 
 
 if len(activities) == 0:
-    sys.exit("Error: no activities found in the specified file")
+    logger.error("no activities found in the specified file")
+    sys.exit()
 
 if len(activities) > 1000:
-    sys.exit(f"Error: only a maximum of 1000 activities can be uploaded at once. The file you specified contained "
+    logger.error(f"only a maximum of 1000 activities can be uploaded at once. The file you specified contained "
              f"{len(activities)} activities.")
+    sys.exit()
 
 continue_flag = input(f"Found {len(activities)} files to upload. This will take about "
                       f"{int((len(activities)*10)/60)} minutes. Continue? (Y/n) ")
 
 if continue_flag.lower() not in ["", "y"]:
     cleanTempDir(activities)
-    sys.exit("Error: user abort")
+    logger.error("user abort")
+    sys.exit()
 
 print("Beginning upload")
 
@@ -241,10 +256,12 @@ for i, row in tqdm(enumerate(activities), total=len(activities)):  # enumerate d
     if r.status_code == 400:
         if "duplicate" not in resp_json["error"]:
             print(resp_json)
-            sys.exit(f"Error: Upload failed. HTTP {r.status_code} returned.")
+            logger.error(f"Upload failed. HTTP {r.status_code} returned.")
+            sys.exit()
     elif r.status_code != 201:
         print(resp_json)
-        sys.exit(f"Error: Upload failed. HTTP {r.status_code} returned.")
+        logger.error(f"Upload failed. HTTP {r.status_code} returned.")
+        sys.exit()
 
     record_progress(resume_from + i)
 
