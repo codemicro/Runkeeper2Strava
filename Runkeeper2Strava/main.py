@@ -258,7 +258,7 @@ for i, row in tqdm(enumerate(activities), total=len(activities)):  # enumerate d
             print(resp_json)
             logger.error(f"Upload failed. HTTP {r.status_code} returned.")
             sys.exit()
-    elif r.status_code != 201:
+    elif r.status_code not in [201, 409]:
         print(resp_json)
         logger.error(f"Upload failed. HTTP {r.status_code} returned.")
         sys.exit()
