@@ -1,5 +1,7 @@
 print("Runkeeper2Strava version 0.1.0b\n")
 
+import csv
+import datetime
 import json
 import os
 import shutil
@@ -13,15 +15,10 @@ import gpxpy
 import requests
 from tqdm import tqdm
 
+import helpers
 import webserver
 
 PORT = 8556
-
-known_activities = {
-    "cycling": "ride",
-    "walking": "walk",
-    "running": "run"
-}
 
 if "R2S_STRAVA_CLIENT_ID" not in os.environ:
     sys.exit("Error: Strava client ID not in environment variables")
@@ -146,65 +143,98 @@ with zipfile.ZipFile(runkeeper_activity_export_path) as zf:
     except FileNotFoundError as e:
         sys.exit(f"Error: Unable to extract ZIP file.\n{e}")
 
-print("Discovering all GPX files...")
 
-gpx_files = []
 
-for file in os.listdir(export_dir):
-    if file.lower().endswith(".gpx"):
-        gpx_files.append(os.path.join(export_dir, file))
 
-gpx_files = gpx_files[resume_from:]
+print("Discovering all activities...")
 
-if len(gpx_files) == 0:
+with open(os.path.join(export_dir, "cardioActivities.csv")) as f:
+    csv_contents = f.read().split("\n")[1:]
+
+activity_reader = csv.reader(csv_contents)
+
+activities = [a for a in activity_reader][resume_from:]
+
+
+if len(activities) == 0:
     sys.exit("Error: no activities found in the specified file")
 
-if len(gpx_files) > 1000:
+if len(activities) > 1000:
     sys.exit(f"Error: only a maximum of 1000 activities can be uploaded at once. The file you specified contained "
-             f"{len(gpx_files)} activities.")
+             f"{len(activities)} activities.")
 
-continue_flag = input(f"Found {len(gpx_files)} files to upload. This will take about "
-                      f"{int((len(gpx_files)*10)/60)} minutes. Continue? (Y/n) ")
+continue_flag = input(f"Found {len(activities)} files to upload. This will take about "
+                      f"{int((len(activities)*10)/60)} minutes. Continue? (Y/n) ")
 
 if continue_flag.lower() not in ["", "y"]:
-    cleanTempDir(export_dir)
+    cleanTempDir(activities)
     sys.exit("Error: user abort")
 
 print("Beginning upload")
 
-for i, file in tqdm(enumerate(gpx_files), total=len(gpx_files)):
+for i, row in tqdm(enumerate(activities), total=len(activities)):  # enumerate doesn't give a length
 
-    try:
-        gpxp = gpxpy.parse(open(file))
-    except gpxpy.gpx.GPXXMLSyntaxException as e:
-        print(f"\nError: {file} is corrupt or unreadable. Skipping this file.")
-        continue
+    if row[-1] == "":
+        # No GPX file avail
 
-    gpx_activity = gpxp.tracks[0].name.lower().split(" ")[0]
+        date_and_time = helpers.time_to_iso(row[1])
+        type = helpers.convert_activity_type(row[2])
+        distance = helpers.miles_to_meters(float(row[4]))
+        duration = helpers.duration_to_seconds(row[5])
 
-    if gpx_activity not in known_activities:
-        print(f"Error: unknown activity: {gpx_activity} - skipping {file}")
-        continue
+        activity_name = ("Afternoon" if datetime.datetime.fromisoformat(date_and_time).hour > 11 else "Morning") + " " \
+                        + type
 
-    upload_params = {
-        "name": ("Afternoon" if int(file.split(os.path.sep)[-1].split(".")[0][11:13]) > 11 else "Morning") + " " +
-                known_activities[gpx_activity],
-        "description": "Uploaded by R2S - https://www.github.com/codemicro/Runkeeper2Strava",
-        "trainer": False,
-        "commute": False,
-        "data_type": "gpx",
-        "external_id": f"uploaded_{i}",
-        "activity_type": known_activities[gpx_activity]
-    }
+        request_args = {
+            "name": activity_name,
+            "type": type,
+            "start_date_local": date_and_time,
+            "elapsed_time": duration,
+            "distance": distance,
+            "trainer": False,
+            "commute": False,
+            "description": "Uploaded by R2S - https://www.github.com/codemicro/Runkeeper2Strava",
+        }
 
-    gpx_file_object = open(file, "rb")
+        r = requests.post(f"{API_ADDR}/activities", data=request_args,
+                          headers={"Authorization": f"Bearer {STRAVA_ACCESS_CODE}"})
 
-    files = {"file": gpx_file_object}
+    else:
+        # There is a GPX file to be read from
 
-    r = requests.post(f"{API_ADDR}/uploads", data=upload_params, files=files,
-                     headers={"Authorization": f"Bearer {STRAVA_ACCESS_CODE}"})
+        file = os.path.join(export_dir, row[-1])
 
-    gpx_file_object.close()
+        try:
+            gpxp = gpxpy.parse(open(file))
+        except gpxpy.gpx.GPXXMLSyntaxException as e:
+            print(f"\nError: {file} is corrupt or unreadable. Skipping this file.")
+            continue
+
+        gpx_activity = gpxp.tracks[0].name.lower().split(" ")[0]
+
+        if gpx_activity not in helpers.known_activities:
+            print(f"Error: unknown activity: {gpx_activity} - skipping {file}")
+            continue
+
+        upload_params = {
+            "name": ("Afternoon" if int(file.split(os.path.sep)[-1].split(".")[0][11:13]) > 11 else "Morning") + " " +
+                    helpers.convert_activity_type(gpx_activity),
+            "description": "Uploaded by R2S - https://www.github.com/codemicro/Runkeeper2Strava",
+            "trainer": False,
+            "commute": False,
+            "data_type": "gpx",
+            "external_id": f"uploaded_{i}",
+            "activity_type": helpers.convert_activity_type(gpx_activity)
+        }
+
+        gpx_file_object = open(file, "rb")
+
+        files = {"file": gpx_file_object}
+
+        r = requests.post(f"{API_ADDR}/uploads", data=upload_params, files=files,
+                         headers={"Authorization": f"Bearer {STRAVA_ACCESS_CODE}"})
+
+        gpx_file_object.close()
 
     resp_json = r.json()
 

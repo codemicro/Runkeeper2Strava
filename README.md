@@ -63,7 +63,7 @@ these types, it will be skipped. If you'd like more activity types to be added, 
 *(Alternatively, you can add activity types by mapping the name used in Runkeeper's GPX files to the name used by Strava. 
 Strava's names can be found [here](https://developers.strava.com/docs/uploads/#how-to-upload-an-activity), and the 
 names used by Runkeeper can be found in the name section of the track name in any GPX file. The Runkeeper value to name 
-can then be mapped into the dictionary named `known_activities` in `main.py`. Feel free to submit a pull request if you 
+can then be mapped into the dictionary named `known_activities` in `helpers.py`. Feel free to submit a pull request if you 
 do this.)*
 
 ### FAQs
